@@ -4,6 +4,8 @@ import { currentEnvironment } from '@constants';
 
 import styles from './users.module.scss';
 
+import './spinner.css';
+
 type Gender = 'female' | 'male' | '';
 
 type User = {
@@ -22,20 +24,48 @@ const Users = () => {
   const [gender, setGender] = useState<Gender>('');
   const [pageToGet, setPageToGet] = useState<number>(1);
 
-  const getUsers = async (page: number) => {
-    const result = await fetch(
-      `${currentEnvironment.api.baseUrl}?results=5&gender=female&page=${String(page)}`,
-    );
-    const usersResults = (await result.json()) as User[];
+  // Added "loading" state
+  const [loading, setLoading] = useState(false);
 
-    setUsers((oldUsers) => (page === 1 ? usersResults : [...oldUsers, ...usersResults]));
+  const getUsers = async (page: number, gender: Gender) => {
+    setLoading(true);
+
+    // Added "try" "finally" statement to show loading state
+    try {
+      // Added "${gender}" to the URL to fetch accordingly
+      const result = await fetch(
+        `${currentEnvironment.api.baseUrl}?results=5&gender=${gender}&page=${String(page)}`,
+      );
+
+      // The next line was the cause of users not being displayed
+      // const usersResults = (await result.json()) as User[];
+
+      // The problem was that userResults was returning an object and we had to
+      // access the "results" array inside it
+      const data = await result.json();
+      const usersResults = data.results as User[];
+
+      console.log(usersResults);
+      setUsers(oldUsers =>
+        page === 1 ? usersResults : [...oldUsers, ...usersResults],
+      );
+    } finally {
+      setLoading(false); // After data is fetched, disable loader
+    }
   };
 
+  // The problem here is that the dependency array "[]" of useEffect was empty
+  // meaning that the effect was running only once at the beggining, making
+  // the "Load More" button to not work properly.
+  // Now it re-runs every time "pageToGet" changes.
+
+  // Furthermore, I added the "gender" to the dependency array so that it
+  // will display the users according to the gender selected.
   useEffect(() => {
     void (async () => {
-      await getUsers(pageToGet);
+      await getUsers(pageToGet, gender);
     })();
-  }, []);
+  }, [pageToGet, gender]);
 
   return (
     <div>
@@ -44,8 +74,9 @@ const Users = () => {
         <select
           id="gender"
           name="gender"
-          onChange={(event) => {
+          onChange={event => {
             setGender(event.target.value as Gender);
+            setPageToGet(1); // Added this line in order to reset when a new gender is selected
           }}
         >
           <option value="">All</option>
@@ -53,25 +84,40 @@ const Users = () => {
           <option value="male">Male</option>
         </select>
       </div>
-      <ul>
-        {users.length > 0
-          ? users.map((user: User) => (
-            <li key={user.login.uuid}>
-              {user.name.first}
-              {' '}
-              {user.name.last}
-              {' '}
-              {user.gender}
-              {' '}
-            </li>
-          ))
-          : null}
-      </ul>
+
+      {/* Check if loading true */}
+      {loading ? (
+        <div id="loading"></div>
+      ) : (
+        <div>
+          <table style={{ width: '100%' }}>
+            <thead style={{ fontWeight: 'bold' }}>
+              <tr>
+                <td>First Name</td>
+                <td>Last Name</td>
+                <td>Gender</td>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length > 0
+                ? users.map((user: User) => (
+                    <tr key={user.login.uuid}>
+                      <td>{user.name.first}</td>
+                      <td>{user.name.last}</td>
+                      <td>{user.gender}</td>
+                    </tr>
+                  ))
+                : null}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <button
         className={styles.loadButton}
         type="button"
         onClick={() => {
-          setPageToGet((v) => v + 1);
+          setPageToGet(v => v + 1);
         }}
       >
         Load More

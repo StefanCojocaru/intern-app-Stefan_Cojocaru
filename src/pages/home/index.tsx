@@ -1,16 +1,12 @@
-const Home = () => (
-  <div
-    style={{
-      alignItems: 'center',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      minHeight: '90vh',
-      width: '100%',
-    }}
-  >
-    <h1>Welcome!</h1>
-  </div>
-);
+import HomeStructure from 'components/HomeStructure';
+
+const Home = () => {
+  return (
+    <div>
+      <h1>Welcome!</h1>
+      <HomeStructure />
+    </div>
+  );
+};
 
 export default Home;
